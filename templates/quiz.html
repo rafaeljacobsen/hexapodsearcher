@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Hexapod Family Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .navigation {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-link {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .setup-section {
+            margin-bottom: 40px;
+        }
+
+        .setup-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .family-input-section {
+            margin-bottom: 20px;
+        }
+
+        .family-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        .family-input.validating {
+            border-color: #f39c12;
+        }
+
+        .family-input.valid {
+            border-color: #27ae60;
+        }
+
+        .family-input.invalid {
+            border-color: #e74c3c;
+        }
+
+        .family-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .family-chip {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .remove-chip {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-chip:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e1e8ed;
+            color: #2c3e50;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d8dd;
+        }
+
+        .save-load-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e8ed;
+        }
+
+        .save-quiz-input {
+            width: 200px;
+            padding: 10px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 0.9rem;
+        }
+
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+
+        .saved-quizzes {
+            margin-top: 20px;
+        }
+
+        .saved-quiz-item {
+            background: #f8f9fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .saved-quiz-info h4 {
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .saved-quiz-info p {
+            color: #7f8c8d;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        .saved-quiz-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-load {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn-load:hover {
+            background: #219a52;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .quiz-section {
+            display: none;
+        }
+
+        .quiz-image {
+            max-width: 400px;
+            max-height: 400px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 15px;
+            margin: 0 auto 30px;
+            display: block;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .quiz-question {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .quiz-question h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .answer-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .answer-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .answer-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .answer-input.correct {
+            border-color: #27ae60;
+            background: #d4edda;
+        }
+
+        .answer-input.incorrect {
+            border-color: #e74c3c;
+            background: #f8d7da;
+        }
+
+        .submit-answer-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-answer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-answer-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quiz-controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .score-display {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .score-display h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .feedback {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .species-info {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .answer-input {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hexapod Family Quiz</h1>
+        </div>
+
+        <div class="navigation">
+            <a href="/" class="nav-link">← Back to Explorer</a>
+        </div>
+
+        <div class="setup-section" id="setupSection">
+            <h2>Setup Your Quiz</h2>
+            
+            <div class="family-input-section">
+                <input 
+                    type="text" 
+                    id="familyInput" 
+                    class="family-input" 
+                    placeholder="Enter hexapod family name (e.g., Formicidae, Apidae, Coccinellidae)"
+                >
+                <div id="validationMessage" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></div>
+                <div class="family-chips" id="familyChips"></div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="btn btn-primary" onclick="startQuiz()">Start Quiz</button>
+                <button class="btn btn-secondary" onclick="addSampleFamilies()">Add Sample Families</button>
+            </div>
+
+            <div class="save-load-section">
+                <h3 style="color: #2c3e50; margin-bottom: 15px; text-align: center;">Save & Load Quiz Setups</h3>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <input 
+                        type="text" 
+                        id="quizNameInput" 
+                        class="save-quiz-input" 
+                        placeholder="Enter quiz name..."
+                        maxlength="50"
+                    >
+                    <button class="btn btn-secondary btn-small" onclick="saveCurrentQuiz()">Save Current Setup</button>
+                    <button class="btn btn-secondary btn-small" onclick="loadSavedQuizzes()">Refresh List</button>
+                </div>
+
+                <div class="saved-quizzes" id="savedQuizzesList">
+                    <!-- Saved quizzes will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-section" id="quizSection">
+            <div class="score-display">
+                <h3>Score: <span id="score">0</span> / <span id="totalQuestions">0</span></h3>
+                <p>Question <span id="currentQuestion">1</span></p>
+            </div>
+
+            <div class="quiz-question">
+                <h2>What family does this hexapod belong to?</h2>
+                <img id="quizImage" class="quiz-image" src="" alt="Hexapod to identify">
+            </div>
+
+            <div class="answer-section">
+                <input 
+                    type="text" 
+                    id="answerInput" 
+                    class="answer-input" 
+                    placeholder="Type the family name here..."
+                    autocomplete="off"
+                >
+                <br>
+                <button class="submit-answer-btn" id="submitBtn" onclick="submitAnswer()">Submit Answer</button>
+            </div>
+
+            <div class="feedback" id="feedback" style="display: none;"></div>
+
+            <div class="quiz-controls">
+                <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display: none;">Next Question</button>
+                <button class="btn btn-secondary" id="newImageBtn" onclick="getNewImage()">New Image</button>
+                <button class="btn btn-secondary" onclick="endQuiz()">End Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let quizFamilies = [];
+        let currentQuestionData = null;
+        let score = 0;
+        let totalQuestions = 0;
+        let selectedAnswer = null;
+
+        // Add family to quiz list
+        async function addFamily() {
+            const input = document.getElementById('familyInput');
+            const familyName = input.value.trim();
+            const validationMessage = document.getElementById('validationMessage');
+            
+            if (!familyName) return;
+            
+            if (quizFamilies.includes(familyName)) {
+                showValidationMessage('Family already added', 'error');
+                return;
+            }
+            
+            // Show validating state
+            input.className = 'family-input validating';
+            validationMessage.innerHTML = '<span style="color: #f39c12;">Validating...</span>';
+            
+            try {
+                const response = await fetch(`/api/validate/family/${encodeURIComponent(familyName)}`);
+                const data = await response.json();
+                
+                if (data.valid) {
+                    // Use the properly formatted name from the API
+                    const properFamilyName = data.family_name;
+                    
+                    if (quizFamilies.includes(properFamilyName)) {
+                        showValidationMessage('Family already added', 'error');
+                        input.className = 'family-input';
+                        return;
+                    }
+                    
+                    quizFamilies.push(properFamilyName);
+                    updateFamilyChips();
+                    input.value = '';
+                    input.className = 'family-input';
+                    showValidationMessage('Valid family added!', 'success');
+                    
+                    // Clear success message after 2 seconds
+                    setTimeout(() => {
+                        validationMessage.innerHTML = '';
+                    }, 2000);
+                } else {
+                    input.className = 'family-input invalid';
+                    showValidationMessage(data.error, 'error');
+                }
+            } catch (error) {
+                input.className = 'family-input invalid';
+                showValidationMessage('Error validating family name', 'error');
+            }
+        }
+        
+        // Show validation message
+        function showValidationMessage(message, type) {
+            const validationMessage = document.getElementById('validationMessage');
+            const color = type === 'success' ? '#27ae60' : '#e74c3c';
+            validationMessage.innerHTML = `<span style="color: ${color};">${message}</span>`;
+        }
+
+        // Update the display of selected families
+        function updateFamilyChips() {
+            const chipsContainer = document.getElementById('familyChips');
+            chipsContainer.innerHTML = '';
+            
+            quizFamilies.forEach(family => {
+                const chip = document.createElement('div');
+                chip.className = 'family-chip';
+                chip.innerHTML = `
+                    ${family}
+                    <button class="remove-chip" onclick="removeFamily('${family}')">×</button>
+                `;
+                chipsContainer.appendChild(chip);
+            });
+        }
+
+        // Remove family from quiz list
+        function removeFamily(familyName) {
+            quizFamilies = quizFamilies.filter(f => f !== familyName);
+            updateFamilyChips();
+        }
+
+        // Add sample families for quick start
+        function addSampleFamilies() {
+            const samples = ['Formicidae', 'Apidae', 'Coccinellidae', 'Papilionidae', 'Libellulidae'];
+            samples.forEach(family => {
+                if (!quizFamilies.includes(family)) {
+                    quizFamilies.push(family);
+                }
+            });
+            updateFamilyChips();
+        }
+
+        // Save current quiz setup
+        async function saveCurrentQuiz() {
+            const nameInput = document.getElementById('quizNameInput');
+            const quizName = nameInput.value.trim();
+            
+            if (!quizName) {
+                alert('Please enter a name for your quiz');
+                return;
+            }
+            
+            if (quizFamilies.length < 2) {
+                alert('Please add at least 2 families before saving');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/quiz/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: quizName,
+                        families: quizFamilies
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    nameInput.value = '';
+                    loadSavedQuizzes(); // Refresh the list
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to save quiz: ' + error.message);
+            }
+        }
+
+        // Load saved quizzes list
+        async function loadSavedQuizzes() {
+            try {
+                const response = await fetch('/api/quiz/list');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('savedQuizzesList').innerHTML = `<p style="color: #e74c3c; text-align: center;">${data.error}</p>`;
+                    return;
+                }
+                
+                displaySavedQuizzes(data.quizzes);
+            } catch (error) {
+                document.getElementById('savedQuizzesList').innerHTML = `<p style="color: #e74c3c; text-align: center;">Failed to load saved quizzes</p>`;
+            }
+        }
+
+        // Display saved quizzes
+        function displaySavedQuizzes(quizzes) {
+            const container = document.getElementById('savedQuizzesList');
+            
+            if (quizzes.length === 0) {
+                container.innerHTML = '<p style="color: #7f8c8d; text-align: center; font-style: italic;">No saved quizzes yet</p>';
+                return;
+            }
+            
+            let html = '';
+            quizzes.forEach(quiz => {
+                const familyList = quiz.families.slice(0, 3).join(', ') + (quiz.families.length > 3 ? '...' : '');
+                html += `
+                    <div class="saved-quiz-item">
+                        <div class="saved-quiz-info">
+                            <h4>${quiz.name}</h4>
+                            <p>${quiz.family_count} families: ${familyList}</p>
+                        </div>
+                        <div class="saved-quiz-actions">
+                            <button class="btn-load" onclick="loadQuizSetup('${quiz.name}', ${JSON.stringify(quiz.families).replace(/"/g, '&quot;')})">Load</button>
+                            <button class="btn-delete" onclick="deleteQuizSetup('${quiz.name}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Load a specific quiz setup
+        function loadQuizSetup(quizName, families) {
+            if (confirm(`Load quiz setup "${quizName}"? This will replace your current families.`)) {
+                quizFamilies = [...families];
+                updateFamilyChips();
+                showValidationMessage(`Loaded quiz setup: ${quizName}`, 'success');
+                
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('validationMessage').innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Delete a quiz setup
+        async function deleteQuizSetup(quizName) {
+            if (!confirm(`Are you sure you want to delete the quiz setup "${quizName}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/quiz/delete/${encodeURIComponent(quizName)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadSavedQuizzes(); // Refresh the list
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to delete quiz: ' + error.message);
+            }
+        }
+
+        // Start the quiz
+        function startQuiz() {
+            if (quizFamilies.length < 2) {
+                alert('Please add at least 2 families to start the quiz.');
+                return;
+            }
+
+            document.getElementById('setupSection').style.display = 'none';
+            document.getElementById('quizSection').style.display = 'block';
+            
+            score = 0;
+            totalQuestions = 0;
+            nextQuestion();
+        }
+
+        // Load next question
+        async function nextQuestion() {
+            totalQuestions++;
+            await loadQuestion();
+        }
+
+        // Get new image for current question (doesn't increment question count)
+        async function getNewImage() {
+            if (selectedAnswer) {
+                // If already answered, treat as next question
+                nextQuestion();
+                return;
+            }
+            await loadQuestion();
+        }
+
+        // Load a question (used by both nextQuestion and getNewImage)
+        async function loadQuestion() {
+            try {
+                document.getElementById('nextBtn').style.display = 'none';
+                document.getElementById('feedback').style.display = 'none';
+                document.getElementById('newImageBtn').disabled = true;
+                document.getElementById('submitBtn').disabled = true;
+                selectedAnswer = null;
+
+                // Clear and disable answer input
+                const answerInput = document.getElementById('answerInput');
+                answerInput.value = '';
+                answerInput.className = 'answer-input';
+                answerInput.disabled = true;
+                answerInput.placeholder = 'Loading question...';
+
+                const response = await fetch('/api/quiz/question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ families: quizFamilies })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                currentQuestionData = data;
+
+                // Update display
+                document.getElementById('quizImage').src = data.image_url;
+                document.getElementById('totalQuestions').textContent = totalQuestions;
+                document.getElementById('currentQuestion').textContent = totalQuestions;
+
+                // Enable input
+                answerInput.disabled = false;
+                answerInput.placeholder = 'Type the family name here...';
+                answerInput.focus();
+                
+                document.getElementById('newImageBtn').disabled = false;
+                document.getElementById('submitBtn').disabled = false;
+
+            } catch (error) {
+                const answerInput = document.getElementById('answerInput');
+                answerInput.placeholder = 'Error loading question';
+                answerInput.disabled = true;
+                document.getElementById('newImageBtn').disabled = false;
+                document.getElementById('submitBtn').disabled = true;
+            }
+        }
+
+        // Handle answer submission
+        function submitAnswer() {
+            if (selectedAnswer) return; // Already answered
+
+            const answerInput = document.getElementById('answerInput');
+            const userAnswer = answerInput.value.trim();
+            
+            if (!userAnswer) {
+                alert('Please enter an answer');
+                return;
+            }
+
+            selectedAnswer = userAnswer;
+            const correctAnswer = currentQuestionData.correct_answer;
+            
+            // Check if answer is correct (case-insensitive)
+            const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase();
+
+            // Update score
+            if (isCorrect) {
+                score++;
+                document.getElementById('score').textContent = score;
+                answerInput.className = 'answer-input correct';
+            } else {
+                answerInput.className = 'answer-input incorrect';
+            }
+
+            // Disable input and submit button
+            answerInput.disabled = true;
+            document.getElementById('submitBtn').disabled = true;
+
+            // Show feedback
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+            
+            if (isCorrect) {
+                feedback.className = 'feedback correct';
+                feedback.innerHTML = `
+                    Correct! This is indeed ${correctAnswer}.
+                    <br>Species: ${currentQuestionData.scientific_name}
+                    <br><a href="${currentQuestionData.observation_url}" target="_blank">View on iNaturalist</a>
+                `;
+            } else {
+                feedback.className = 'feedback incorrect';
+                feedback.innerHTML = `
+                    Incorrect. The correct answer is ${correctAnswer}.
+                    <br>Your answer: ${userAnswer}
+                    <br>Species: ${currentQuestionData.scientific_name}
+                    <br><a href="${currentQuestionData.observation_url}" target="_blank">View on iNaturalist</a>
+                `;
+            }
+
+            document.getElementById('nextBtn').style.display = 'inline-block';
+        }
+
+        // End quiz and return to setup
+        function endQuiz() {
+            const percentage = Math.round((score / totalQuestions) * 100) || 0;
+            alert(`Quiz Complete!\nScore: ${score}/${totalQuestions} (${percentage}%)`);
+            
+            document.getElementById('setupSection').style.display = 'block';
+            document.getElementById('quizSection').style.display = 'none';
+        }
+
+        // Allow Enter key to add families and clear validation on input
+        const familyInput = document.getElementById('familyInput');
+        
+        familyInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addFamily();
+            }
+        });
+        
+        familyInput.addEventListener('input', function() {
+            // Clear validation state when user types
+            this.className = 'family-input';
+            document.getElementById('validationMessage').innerHTML = '';
+        });
+        
+        // Add Enter key support for answer input (when quiz is active)
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const answerInput = document.getElementById('answerInput');
+                const submitBtn = document.getElementById('submitBtn');
+                
+                // Check if answer input is focused and enabled
+                if (document.activeElement === answerInput && !answerInput.disabled && !submitBtn.disabled) {
+                    submitAnswer();
+                                 }
+             }
+         });
+
+        // Load saved quizzes when page loads
+        window.addEventListener('load', function() {
+            loadSavedQuizzes();
+        });
+    </script>
+</body>
+</html> 
