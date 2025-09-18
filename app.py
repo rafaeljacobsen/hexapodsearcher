@@ -14,23 +14,23 @@ CORS(app)
 # iNaturalist API base URL
 INATURALIST_API_BASE = "https://api.inaturalist.org/v1"
 
-def search_hexapod_family_observations(family_name, limit=5):
+def search_hexapod_taxon_observations(taxon_name, limit=5):
     """
-    Search for observations of a specific hexapod family from iNaturalist
+    Search for observations of a specific hexapod taxon from iNaturalist
     
     Args:
-        family_name (str): The name of the hexapod family
+        taxon_name (str): The name of the hexapod taxon (family, superfamily, or order)
         limit (int): Number of observations to return (default: 5)
     
     Returns:
         list: List of observation data with images
     """
     try:
-        # First, search for the taxon ID of the family
+        # First, search for the taxon ID
         taxa_url = f"{INATURALIST_API_BASE}/taxa"
         taxa_params = {
-            'q': family_name,
-            'rank': 'family',
+            'q': taxon_name,
+            'rank': ['family', 'superfamily', 'order'],
             'iconic_taxa': 'Insecta',  # Filter for insects (hexapods)
             'per_page': 1
         }
@@ -40,10 +40,11 @@ def search_hexapod_family_observations(family_name, limit=5):
         taxa_data = taxa_response.json()
         
         if not taxa_data['results']:
-            return {'error': f'Family "{family_name}" not found in hexapods'}
+            return {'error': f'Taxon "{taxon_name}" not found in hexapods'}
         
         taxon_id = taxa_data['results'][0]['id']
-        family_scientific_name = taxa_data['results'][0]['name']
+        taxon_scientific_name = taxa_data['results'][0]['name']
+        taxon_rank = taxa_data['results'][0]['rank']
         
         # Now search for observations of this family with photos
         # Get more observations to filter for diversity
@@ -125,8 +126,9 @@ def search_hexapod_family_observations(family_name, limit=5):
                     break
         
         return {
-            'family_name': family_scientific_name,
-            'family_id': taxon_id,
+            'taxon_name': taxon_scientific_name,
+            'taxon_id': taxon_id,
+            'taxon_rank': taxon_rank,
             'total_found': len(observations),
             'observations': observations
         }
@@ -149,24 +151,24 @@ def quiz():
 @app.route('/api/family/<family_name>')
 def get_family_images(family_name):
     """
-    API endpoint to get images for a hexapod family
+    API endpoint to get images for a hexapod taxon
     
     Args:
-        family_name (str): Name of the hexapod family
+        family_name (str): Name of the hexapod taxon
     
     Returns:
         JSON response with observation data and images
     """
-    result = search_hexapod_family_observations(family_name)
+    result = search_hexapod_taxon_observations(family_name)
     return jsonify(result)
 
 @app.route('/api/family/<family_name>/count/<int:count>')
 def get_family_images_with_count(family_name, count):
     """
-    API endpoint to get a specific number of images for a hexapod family
+    API endpoint to get a specific number of images for a hexapod taxon
     
     Args:
-        family_name (str): Name of the hexapod family
+        family_name (str): Name of the hexapod taxon
         count (int): Number of images to return
     
     Returns:
@@ -174,16 +176,16 @@ def get_family_images_with_count(family_name, count):
     """
     # Limit count to reasonable range
     count = max(1, min(count, 20))
-    result = search_hexapod_family_observations(family_name, limit=count)
+    result = search_hexapod_taxon_observations(family_name, limit=count)
     return jsonify(result)
 
-@app.route('/api/validate/family/<family_name>')
-def validate_family_name(family_name):
+@app.route('/api/validate/taxon/<taxon_name>')
+def validate_taxon_name(taxon_name):
     """
-    Validate if a family name exists in hexapods
+    Validate if a taxon name exists in hexapods and check for overlaps
     
     Args:
-        family_name (str): Name of the family to validate
+        taxon_name (str): Name of the taxon to validate
     
     Returns:
         JSON response with validation result
@@ -192,33 +194,97 @@ def validate_family_name(family_name):
         # Search for the taxon in iNaturalist's taxonomy
         taxa_url = f"{INATURALIST_API_BASE}/taxa"
         taxa_params = {
-            'q': family_name,
-            'rank': 'family',
+            'q': taxon_name,
+            'rank': ['family', 'superfamily', 'order'],
             'iconic_taxa': 'Insecta',  # Filter for insects (hexapods)
-            'per_page': 1
+            'per_page': 5
         }
         
         taxa_response = requests.get(taxa_url, params=taxa_params, timeout=10)
         taxa_response.raise_for_status()
         taxa_data = taxa_response.json()
         
-        if taxa_data['results']:
-            family_info = taxa_data['results'][0]
-            return jsonify({
-                'valid': True,
-                'family_name': family_info['name'],
-                'family_id': family_info['id']
-            })
-        else:
+        if not taxa_data['results']:
             return jsonify({
                 'valid': False,
-                'error': f'"{family_name}" is not a valid hexapod family name'
+                'error': f'"{taxon_name}" is not a valid hexapod family, superfamily, or order'
             })
-            
+        
+        # Find exact match
+        exact_match = None
+        for result in taxa_data['results']:
+            if result['name'].lower() == taxon_name.lower():
+                exact_match = result
+                break
+        
+        if not exact_match:
+            exact_match = taxa_data['results'][0]  # Use first result if no exact match
+        
+        return jsonify({
+            'valid': True,
+            'taxon_name': exact_match['name'],
+            'taxon_id': exact_match['id'],
+            'rank': exact_match['rank'],
+            'ancestry': exact_match.get('ancestry', '')
+        })
+        
     except Exception as e:
         return jsonify({
             'valid': False,
-            'error': f'Error validating family name: {str(e)}'
+            'error': f'Error validating taxon name: {str(e)}'
+        })
+
+@app.route('/api/validate/overlap', methods=['POST'])
+def check_taxonomic_overlap():
+    """
+    Check if a new taxon overlaps with existing taxa in the quiz
+    
+    Expects JSON: {"new_taxon": {"name": "...", "id": ..., "rank": "...", "ancestry": "..."}, "existing_taxa": [...]}
+    Returns: {"overlap": true/false, "overlapping_taxon": "...", "reason": "..."}
+    """
+    try:
+        data = request.get_json()
+        new_taxon = data.get('new_taxon', {})
+        existing_taxa = data.get('existing_taxa', [])
+        
+        new_id = str(new_taxon.get('taxon_id', ''))
+        new_ancestry = new_taxon.get('ancestry', '')
+        new_rank = new_taxon.get('rank', '')
+        new_name = new_taxon.get('taxon_name', '')
+        
+        # Create ancestry sets for comparison
+        new_ancestry_set = set(new_ancestry.split('/')) if new_ancestry else set()
+        new_ancestry_set.add(new_id)
+        
+        for existing_taxon in existing_taxa:
+            existing_id = str(existing_taxon.get('taxon_id', ''))
+            existing_ancestry = existing_taxon.get('ancestry', '')
+            existing_name = existing_taxon.get('taxon_name', '')
+            
+            existing_ancestry_set = set(existing_ancestry.split('/')) if existing_ancestry else set()
+            existing_ancestry_set.add(existing_id)
+            
+            # Check for overlap: if either taxon is an ancestor of the other
+            if new_id in existing_ancestry_set:
+                return jsonify({
+                    'overlap': True,
+                    'overlapping_taxon': existing_name,
+                    'reason': f'{new_name} ({new_rank}) is a parent/ancestor of {existing_name}'
+                })
+            
+            if existing_id in new_ancestry_set:
+                return jsonify({
+                    'overlap': True,
+                    'overlapping_taxon': existing_name,
+                    'reason': f'{existing_name} is a parent/ancestor of {new_name} ({new_rank})'
+                })
+        
+        return jsonify({'overlap': False})
+        
+    except Exception as e:
+        return jsonify({
+            'overlap': True,
+            'error': f'Error checking overlap: {str(e)}'
         })
 
 @app.route('/api/quiz/save', methods=['POST'])
@@ -350,8 +416,8 @@ def get_quiz_question():
         import random
         correct_family = random.choice(families)
         
-        # Get one image for the correct family
-        result = search_hexapod_family_observations(correct_family, limit=1)
+        # Get one image for the correct taxon
+        result = search_hexapod_taxon_observations(correct_family, limit=1)
         
         if 'error' in result or not result.get('observations'):
             return jsonify({'error': f'Could not get image for {correct_family}'})

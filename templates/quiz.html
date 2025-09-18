@@ -410,7 +410,7 @@
                     type="text" 
                     id="familyInput" 
                     class="family-input" 
-                    placeholder="Enter hexapod family name (e.g., Formicidae, Apidae, Coccinellidae)"
+                    placeholder="Enter hexapod family, superfamily, or order (e.g., Formicidae, Lepidoptera, Hymenoptera)"
                 >
                 <div id="validationMessage" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></div>
                 <div class="family-chips" id="familyChips"></div>
@@ -476,22 +476,23 @@
     </div>
 
     <script>
-        let quizFamilies = [];
+        let quizTaxa = [];  // Now stores families, superfamilies, and orders
         let currentQuestionData = null;
         let score = 0;
         let totalQuestions = 0;
         let selectedAnswer = null;
 
-        // Add family to quiz list
+        // Add taxon to quiz list
         async function addFamily() {
             const input = document.getElementById('familyInput');
-            const familyName = input.value.trim();
+            const taxonName = input.value.trim();
             const validationMessage = document.getElementById('validationMessage');
             
-            if (!familyName) return;
+            if (!taxonName) return;
             
-            if (quizFamilies.includes(familyName)) {
-                showValidationMessage('Family already added', 'error');
+            // Check if already exists
+            if (quizTaxa.some(taxon => taxon.taxon_name === taxonName)) {
+                showValidationMessage('Taxon already added', 'error');
                 return;
             }
             
@@ -500,36 +501,59 @@
             validationMessage.innerHTML = '<span style="color: #f39c12;">Validating...</span>';
             
             try {
-                const response = await fetch(`/api/validate/family/${encodeURIComponent(familyName)}`);
+                // First validate the taxon
+                const response = await fetch(`/api/validate/taxon/${encodeURIComponent(taxonName)}`);
                 const data = await response.json();
                 
-                if (data.valid) {
-                    // Use the properly formatted name from the API
-                    const properFamilyName = data.family_name;
-                    
-                    if (quizFamilies.includes(properFamilyName)) {
-                        showValidationMessage('Family already added', 'error');
-                        input.className = 'family-input';
-                        return;
-                    }
-                    
-                    quizFamilies.push(properFamilyName);
-                    updateFamilyChips();
-                    input.value = '';
-                    input.className = 'family-input';
-                    showValidationMessage('Valid family added!', 'success');
-                    
-                    // Clear success message after 2 seconds
-                    setTimeout(() => {
-                        validationMessage.innerHTML = '';
-                    }, 2000);
-                } else {
+                if (!data.valid) {
                     input.className = 'family-input invalid';
                     showValidationMessage(data.error, 'error');
+                    return;
                 }
+                
+                // Check for taxonomic overlaps
+                const overlapResponse = await fetch('/api/validate/overlap', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        new_taxon: data,
+                        existing_taxa: quizTaxa
+                    })
+                });
+                
+                const overlapData = await overlapResponse.json();
+                
+                if (overlapData.overlap) {
+                    input.className = 'family-input invalid';
+                    showValidationMessage(overlapData.reason, 'error');
+                    return;
+                }
+                
+                // Use the properly formatted name from the API
+                const properTaxonName = data.taxon_name;
+                
+                if (quizTaxa.some(taxon => taxon.taxon_name === properTaxonName)) {
+                    showValidationMessage('Taxon already added', 'error');
+                    input.className = 'family-input';
+                    return;
+                }
+                
+                quizTaxa.push(data);
+                updateFamilyChips();
+                input.value = '';
+                input.className = 'family-input';
+                showValidationMessage(`Valid ${data.rank} added!`, 'success');
+                
+                // Clear success message after 2 seconds
+                setTimeout(() => {
+                    validationMessage.innerHTML = '';
+                }, 2000);
+                
             } catch (error) {
                 input.className = 'family-input invalid';
-                showValidationMessage('Error validating family name', 'error');
+                showValidationMessage('Error validating taxon name', 'error');
             }
         }
         
@@ -540,34 +564,40 @@
             validationMessage.innerHTML = `<span style="color: ${color};">${message}</span>`;
         }
 
-        // Update the display of selected families
+        // Update the display of selected taxa
         function updateFamilyChips() {
             const chipsContainer = document.getElementById('familyChips');
             chipsContainer.innerHTML = '';
             
-            quizFamilies.forEach(family => {
+            quizTaxa.forEach(taxon => {
                 const chip = document.createElement('div');
                 chip.className = 'family-chip';
                 chip.innerHTML = `
-                    ${family}
-                    <button class="remove-chip" onclick="removeFamily('${family}')">×</button>
+                    ${taxon.taxon_name} (${taxon.rank})
+                    <button class="remove-chip" onclick="removeFamily('${taxon.taxon_name}')">×</button>
                 `;
                 chipsContainer.appendChild(chip);
             });
         }
 
-        // Remove family from quiz list
-        function removeFamily(familyName) {
-            quizFamilies = quizFamilies.filter(f => f !== familyName);
+        // Remove taxon from quiz list
+        function removeFamily(taxonName) {
+            quizTaxa = quizTaxa.filter(t => t.taxon_name !== taxonName);
             updateFamilyChips();
         }
 
-        // Add sample families for quick start
+        // Add sample taxa for quick start
         function addSampleFamilies() {
-            const samples = ['Formicidae', 'Apidae', 'Coccinellidae', 'Papilionidae', 'Libellulidae'];
-            samples.forEach(family => {
-                if (!quizFamilies.includes(family)) {
-                    quizFamilies.push(family);
+            const samples = [
+                {taxon_name: 'Formicidae', rank: 'family', taxon_id: 47336, ancestry: '48460/1/47120/372739/47158'},
+                {taxon_name: 'Apidae', rank: 'family', taxon_id: 52747, ancestry: '48460/1/47120/372739/47158/47201'},
+                {taxon_name: 'Lepidoptera', rank: 'order', taxon_id: 47157, ancestry: '48460/1/47120'},
+                {taxon_name: 'Libellulidae', rank: 'family', taxon_id: 51847, ancestry: '48460/1/47120/47792/47796'}
+            ];
+            
+            samples.forEach(taxon => {
+                if (!quizTaxa.some(t => t.taxon_name === taxon.taxon_name)) {
+                    quizTaxa.push(taxon);
                 }
             });
             updateFamilyChips();
@@ -583,8 +613,8 @@
                 return;
             }
             
-            if (quizFamilies.length < 2) {
-                alert('Please add at least 2 families before saving');
+            if (quizTaxa.length < 2) {
+                alert('Please add at least 2 taxa before saving');
                 return;
             }
             
@@ -596,7 +626,7 @@
                     },
                     body: JSON.stringify({
                         name: quizName,
-                        families: quizFamilies
+                        families: quizTaxa
                     })
                 });
                 
@@ -662,8 +692,8 @@
 
         // Load a specific quiz setup
         function loadQuizSetup(quizName, families) {
-            if (confirm(`Load quiz setup "${quizName}"? This will replace your current families.`)) {
-                quizFamilies = [...families];
+            if (confirm(`Load quiz setup "${quizName}"? This will replace your current taxa.`)) {
+                quizTaxa = [...families];
                 updateFamilyChips();
                 showValidationMessage(`Loaded quiz setup: ${quizName}`, 'success');
                 
@@ -700,8 +730,8 @@
 
         // Start the quiz
         function startQuiz() {
-            if (quizFamilies.length < 2) {
-                alert('Please add at least 2 families to start the quiz.');
+            if (quizTaxa.length < 2) {
+                alert('Please add at least 2 taxa to start the quiz.');
                 return;
             }
 
@@ -750,7 +780,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ families: quizFamilies })
+                    body: JSON.stringify({ families: quizTaxa.map(t => t.taxon_name) })
                 });
 
                 const data = await response.json();
